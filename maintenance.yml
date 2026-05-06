@@ -1,0 +1,31 @@
+---
+- name: Configure system maintenance
+  hosts: servers
+
+  tasks:
+    - name: Create system update script
+      become: yes
+      ansible.builtin.copy:
+        dest: /usr/local/bin/update_system.sh
+        mode: '0755'
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y
+          apt-get upgrade -y
+          apt-get dist-upgrade -y
+          apt-get autoremove -y
+          apt-get autoclean -y
+
+    - name: Configure weekly cron job for system update (Sunday 03:00)
+      become: yes
+      ansible.builtin.cron:
+        name: "weekly system update"
+        minute: "0"
+        hour: "3"
+        weekday: "0"
+        job: "/usr/local/bin/update_system.sh >> /var/log/update_system.log 2>&1"
+        user: root
+        state: present
