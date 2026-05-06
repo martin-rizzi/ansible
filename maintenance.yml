@@ -1,10 +1,12 @@
 ---
 - name: Configure system maintenance
   hosts: servers
+  gather_facts: false
 
   tasks:
     - name: Create system update script
       become: yes
+      become_user: root
       ansible.builtin.copy:
         dest: /usr/local/bin/update_system.sh
         mode: '0755'
@@ -12,15 +14,18 @@
         group: root
         content: |
           #!/bin/bash
+          set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
           apt-get update -y
           apt-get upgrade -y
+          # dist-upgrade resolves dependency changes held back by upgrade (intentional: full update)
           apt-get dist-upgrade -y
           apt-get autoremove -y
           apt-get autoclean -y
 
     - name: Configure weekly cron job for system update (Sunday 03:00)
       become: yes
+      become_user: root
       ansible.builtin.cron:
         name: "weekly system update"
         minute: "0"
@@ -29,3 +34,20 @@
         job: "/usr/local/bin/update_system.sh >> /var/log/update_system.log 2>&1"
         user: root
         state: present
+
+    - name: Configure logrotate for update_system log
+      become: yes
+      become_user: root
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/update_system
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/log/update_system.log {
+            weekly
+            rotate 8
+            compress
+            missingok
+            notifempty
+          }
