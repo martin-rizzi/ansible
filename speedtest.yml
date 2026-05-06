@@ -9,7 +9,7 @@
   tasks:
     - name: Install system packages
       become: yes
-      apt:
+      ansible.builtin.apt:
         name:
           - git
           - python3
@@ -20,22 +20,23 @@
 
     - name: Clone speedtest repository
       become: no
-      git:
+      ansible.builtin.git:
         repo: "{{ repo_url }}"
         dest: "{{ repo_dest }}"
         version: main
-        force: no
+        force: yes
 
     - name: Install Python dependencies in virtualenv
       become: no
-      pip:
+      ansible.builtin.pip:
         requirements: "{{ repo_dest }}/requirements.txt"
         virtualenv: "{{ venv_path }}"
         virtualenv_command: python3 -m venv
+        state: present
 
     - name: Configure cron job for speedtest (every 5 minutes)
-      become: no
-      cron:
+      become: yes
+      ansible.builtin.cron:
         name: "speedtest monitor"
         minute: "*/5"
         job: "{{ venv_path }}/bin/python {{ repo_dest }}/speedtest_monitor.py"
